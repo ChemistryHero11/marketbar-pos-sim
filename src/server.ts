@@ -95,20 +95,22 @@ function broadcast(message: WebSocketMessage) {
 }
 
 // Middleware: API Key authentication
-function requireApiKey(req: Request, res: Response, next: NextFunction) {
+function requireApiKey(req: Request, res: Response, next: NextFunction): void {
   const providedKey = req.headers['x-api-key'];
   
   if (!providedKey || providedKey !== API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid API key' });
+    res.status(401).json({ error: 'Unauthorized: Invalid API key' });
+    return;
   }
   
   next();
+  return;
 }
 
 // Routes
 
 // Health check
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   const response: HealthResponse = {
     ok: true,
     menuVersion,
@@ -120,7 +122,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Get catalog items
-app.get('/catalog/items', (req: Request, res: Response) => {
+app.get('/catalog/items', (_req: Request, res: Response) => {
   const response: CatalogResponse = {
     items: Array.from(catalog.values()).filter(item => item.isActive),
     menuVersion,
@@ -133,7 +135,8 @@ app.post('/catalog/items', requireApiKey, (req: Request, res: Response) => {
   const body: CreateItemRequest = req.body;
   
   if (!body.name || !body.category || body.price == null || body.minPrice == null || body.maxPrice == null) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
   }
 
   const now = new Date();
@@ -160,6 +163,7 @@ app.post('/catalog/items', requireApiKey, (req: Request, res: Response) => {
   });
 
   res.status(201).json(item);
+  return;
 });
 
 // Update catalog item
@@ -169,7 +173,8 @@ app.patch('/catalog/items/:id', requireApiKey, (req: Request, res: Response) => 
   
   const item = catalog.get(id);
   if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
+    res.status(404).json({ error: 'Item not found' });
+    return;
   }
 
   // Update fields
@@ -191,6 +196,7 @@ app.patch('/catalog/items/:id', requireApiKey, (req: Request, res: Response) => 
   });
 
   res.json(item);
+  return;
 });
 
 // Update item price
@@ -199,18 +205,21 @@ app.post('/pricing/:itemId', requireApiKey, (req: Request, res: Response) => {
   const body: PriceUpdateRequest = req.body;
   
   if (body.price == null) {
-    return res.status(400).json({ error: 'Price is required' });
+    res.status(400).json({ error: 'Price is required' });
+    return;
   }
 
   const item = catalog.get(itemId);
   if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
+    res.status(404).json({ error: 'Item not found' });
+    return;
   }
 
   // Validate price against guardrails
   const validation = validatePrice(item, body.price, body.overrideGuardrails);
   if (!validation.valid) {
-    return res.status(400).json({ error: validation.message });
+    res.status(400).json({ error: validation.message });
+    return;
   }
 
   // Update price
@@ -240,6 +249,7 @@ app.post('/pricing/:itemId', requireApiKey, (req: Request, res: Response) => {
     menuVersion,
     published: body.publish || false,
   });
+  return;
 });
 
 // Create promotion
@@ -247,12 +257,14 @@ app.post('/promotions', requireApiKey, (req: Request, res: Response) => {
   const body: CreatePromotionRequest = req.body;
   
   if (!body.itemId || !body.kind || body.value == null) {
-    return res.status(400).json({ error: 'Missing required fields' });
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
   }
 
   const item = catalog.get(body.itemId);
   if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
+    res.status(404).json({ error: 'Item not found' });
+    return;
   }
 
   const now = new Date();
@@ -276,10 +288,11 @@ app.post('/promotions', requireApiKey, (req: Request, res: Response) => {
   });
 
   res.status(201).json(promotion);
+  return;
 });
 
 // Publish menu
-app.post('/menu/publish', requireApiKey, (req: Request, res: Response) => {
+app.post('/menu/publish', requireApiKey, (_req: Request, res: Response) => {
   menuVersion++;
   const now = new Date();
 
@@ -290,10 +303,11 @@ app.post('/menu/publish', requireApiKey, (req: Request, res: Response) => {
   });
 
   res.json({ menuVersion, publishedAt: now.toISOString() });
+  return;
 });
 
 // Get orders
-app.get('/orders', (req: Request, res: Response) => {
+app.get('/orders', (_req: Request, res: Response) => {
   const orderList = Array.from(orders.values()).sort((a, b) => 
     b.createdAt.getTime() - a.createdAt.getTime()
   );
@@ -305,7 +319,8 @@ app.post('/orders', async (req: Request, res: Response) => {
   const body: CreateOrderRequest = req.body;
   
   if (!body.items || !Array.isArray(body.items) || body.items.length === 0) {
-    return res.status(400).json({ error: 'Items array is required and must not be empty' });
+    res.status(400).json({ error: 'Items array is required and must not be empty' });
+    return;
   }
 
   try {
@@ -362,8 +377,10 @@ app.post('/orders', async (req: Request, res: Response) => {
     }
 
     res.status(201).json(order);
+    return;
   } catch (error: any) {
     res.status(400).json({ error: error.message });
+    return;
   }
 });
 

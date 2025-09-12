@@ -9,8 +9,8 @@ services:
     autoDeploy: true
     healthCheckPath: /health
     envVars:
-      - key: WEBHOOK_TARGET_URL
-        sync: false
+      - key: MARKETBAR_WEBHOOK_URL   # was WEBHOOK_TARGET_URL
+        sync: false                  # set this in Render dashboard
       - key: WEBHOOK_SECRET
         sync: false
       - key: API_KEY
