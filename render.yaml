@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: pos-sim
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/server.js
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: WEBHOOK_TARGET_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: API_KEY
+        value: pos-sim-dev-key
+      # If using OAuth-style:
+      # - key: OAUTH_CLIENT_ID
+      #   value: sim-client
+      # - key: OAUTH_CLIENT_SECRET
+      #   sync: false
+      # - key: DEFAULT_LOCATION_ID
+      #   value: loc-1
+      # - key: DEV_TOKEN_SCOPES
+      #   value: catalog.read,catalog.write,orders.write,pricing.write,promotions.write
