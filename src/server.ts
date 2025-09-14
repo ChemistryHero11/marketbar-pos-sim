@@ -199,6 +199,30 @@ app.patch('/catalog/items/:id', requireApiKey, (req: Request, res: Response) => 
   return;
 });
 
+// Delete catalog item
+app.delete('/catalog/items/:id', requireApiKey, (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const item = catalog.get(id);
+  if (!item) {
+    res.status(404).json({ error: 'Item not found' });
+    return;
+  }
+
+  catalog.delete(id);
+  menuVersion++;
+  const now = new Date();
+
+  broadcast({
+    event: 'menu.published',
+    data: { menuVersion, deletedItemId: id },
+    ts: now.toISOString(),
+  });
+
+  res.json({ id, deleted: true, menuVersion });
+  return;
+});
+
 // Update item price
 app.post('/pricing/:itemId', requireApiKey, (req: Request, res: Response) => {
   const { itemId } = req.params;

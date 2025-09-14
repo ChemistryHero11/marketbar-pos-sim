@@ -71,6 +71,13 @@ curl -X POST http://localhost:4001/orders \
   }'
 ```
 
+### Delete Item
+
+```bash
+curl -X DELETE http://localhost:4001/catalog/items/ITEM_ID_HERE \
+  -H "x-api-key: pos-sim-dev-key"
+```
+
 ### Update Item Price
 
 ```bash

@@ -505,7 +505,10 @@
                         <div>
                             <div class="item-name">${item.name}</div>
                         </div>
-                        <div class="item-category">${item.category}</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <div class="item-category">${item.category}</div>
+                            <button class="btn btn-danger" onclick="deleteItem('${item.id}')">Delete</button>
+                        </div>
                     </div>
                     <div class="item-price">$${item.price.toFixed(2)}</div>
                     <div class="price-range">
@@ -640,6 +643,36 @@
                 if (id === 'newTaxRate') el.value = '0.0825';
                 else el.value = '';
             });
+        }
+
+        // Delete catalog item
+        async function deleteItem(itemId) {
+            const item = catalog.find(i => i.id === itemId);
+            const name = item ? item.name : itemId;
+            const ok = confirm(`Delete "${name}"? This cannot be undone.`);
+            if (!ok) return;
+            try {
+                const response = await fetch(`${API_URL}/catalog/items/${itemId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'x-api-key': 'pos-sim-dev-key'
+                    }
+                });
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    alert(`Error deleting item: ${error.error || response.statusText}`);
+                    return;
+                }
+                addLog('menu', `Item deleted: ${name}`);
+                if (currentOrder[itemId]) {
+                    delete currentOrder[itemId];
+                    updateOrderDisplay();
+                }
+                await loadCatalog();
+            } catch (error) {
+                console.error('Failed to delete item:', error);
+                alert('Failed to delete item');
+            }
         }
 
         // Add to order
