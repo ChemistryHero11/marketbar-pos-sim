@@ -341,6 +341,31 @@
                 grid-template-columns: 1fr;
             }
         }
+        .new-item {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .form-grid label {
+            font-size: 12px;
+            color: var(--muted);
+            display: block;
+            margin-bottom: 6px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -366,6 +391,39 @@
                         🎲 Simulate 10 Random Orders
                     </button>
                 </div>
+                <details id="addItemDetails" class="new-item">
+                    <summary>➕ Add New Item</summary>
+                    <div class="form-grid">
+                        <div>
+                            <label for="newName">Name</label>
+                            <input id="newName" type="text" class="price-input" placeholder="e.g. Hazy IPA">
+                        </div>
+                        <div>
+                            <label for="newCategory">Category</label>
+                            <input id="newCategory" type="text" class="price-input" placeholder="Beer">
+                        </div>
+                        <div>
+                            <label for="newPrice">Price</label>
+                            <input id="newPrice" type="number" class="price-input" step="0.5" min="0" placeholder="7.50">
+                        </div>
+                        <div>
+                            <label for="newMinPrice">Min Price</label>
+                            <input id="newMinPrice" type="number" class="price-input" step="0.5" min="0" placeholder="5">
+                        </div>
+                        <div>
+                            <label for="newMaxPrice">Max Price</label>
+                            <input id="newMaxPrice" type="number" class="price-input" step="0.5" min="0" placeholder="12">
+                        </div>
+                        <div>
+                            <label for="newTaxRate">Tax Rate</label>
+                            <input id="newTaxRate" type="number" class="price-input" step="0.0001" min="0" max="1" value="0.0825">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" type="button" onclick="createItem()">Create Item</button>
+                        <button class="btn" type="button" onclick="clearNewItemForm()">Clear</button>
+                    </div>
+                </details>
                 <div class="catalog-grid" id="catalogGrid">
                     <!-- Items will be populated here -->
                 </div>
@@ -513,6 +571,75 @@
                 console.error('Failed to update price:', error);
                 alert('Failed to update price');
             }
+        }
+
+        // Create new catalog item
+        async function createItem() {
+            const nameEl = document.getElementById('newName');
+            const categoryEl = document.getElementById('newCategory');
+            const priceEl = document.getElementById('newPrice');
+            const minEl = document.getElementById('newMinPrice');
+            const maxEl = document.getElementById('newMaxPrice');
+            const taxEl = document.getElementById('newTaxRate');
+
+            const name = nameEl.value.trim();
+            const category = categoryEl.value.trim() || 'Beer';
+            const price = parseFloat(priceEl.value);
+            const minPrice = parseFloat(minEl.value);
+            const maxPrice = parseFloat(maxEl.value);
+            const taxRate = taxEl.value ? parseFloat(taxEl.value) : 0.0825;
+
+            if (!name || !category || isNaN(price) || isNaN(minPrice) || isNaN(maxPrice)) {
+                alert('Please fill out Name, Category, Price, Min, and Max.');
+                return;
+            }
+            if (minPrice > maxPrice) {
+                alert('Min Price must be less than or equal to Max Price.');
+                return;
+            }
+            if (price < minPrice || price > maxPrice) {
+                alert('Price must be within the Min/Max range.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/catalog/items`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': 'pos-sim-dev-key'
+                    },
+                    body: JSON.stringify({ name, category, price, minPrice, maxPrice, taxRate })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({}));
+                    alert(`Error creating item: ${error.error || response.statusText}`);
+                    return;
+                }
+
+                const item = await response.json();
+                addLog('menu', `Item created: ${item.name} ($${item.price.toFixed(2)})`);
+                clearNewItemForm();
+
+                const details = document.getElementById('addItemDetails');
+                if (details && details.open) details.open = false;
+
+                await loadCatalog();
+            } catch (error) {
+                console.error('Failed to create item:', error);
+                alert('Failed to create item');
+            }
+        }
+
+        function clearNewItemForm() {
+            const ids = ['newName', 'newCategory', 'newPrice', 'newMinPrice', 'newMaxPrice', 'newTaxRate'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (id === 'newTaxRate') el.value = '0.0825';
+                else el.value = '';
+            });
         }
 
         // Add to order
@@ -687,6 +814,7 @@
                     addLog('menu', `Menu published: v${message.data.menuVersion}`);
                     menuVersion = message.data.menuVersion;
                     document.getElementById('menuVersion').textContent = menuVersion;
+                    loadCatalog();
                     break;
             }
         }
